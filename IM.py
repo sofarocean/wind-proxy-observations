@@ -6,18 +6,12 @@ from roguewave.wavephysics.windestimate import estimate_u10_from_source_terms
 from roguewave.wavephysics.balance import create_balance
 import matplotlib.pyplot as plt
 import pandas as pd
+from datetime import datetime
 
 spotter_id = "SPOT-010340"
 
 ### Define method parameters
-im_params = load('s3://sofar-wx-data-dev-os1/proxy_wind/calibration/final_calibration_st4_weighted=True.zip')
-methods_to_plot = {
-    'st4': {
-        'method': 'st4',
-        'params': im_params,
-        'recalc': False
-    }
-}
+params = load('./data/IM_calibration.zip') #st4
 
 ### Get Spotter data, output format pandas DataFrame
 wave_spectra = load('./data/SPOT-010340_spectra_1d')
@@ -26,21 +20,21 @@ wave_spectra = load('./data/SPOT-010340_spectra_1d')
 wave_spectra_2d = wave_spectra.as_frequency_direction_spectrum(36)
 
 ### Calculate wind estimates for 1 month of Spotter data along Spotter's track
-balance = create_balance(methods_to_plot['st4']['method'], methods_to_plot['st4']['method'])
-balance.update_parameters(methods_to_plot['st4']['params'])
+balance = create_balance('st4', 'st4')
+balance.update_parameters(params)
 wind_estimate = estimate_u10_from_source_terms(wave_spectra_2d,
                                                balance,
                                                direction_iteration=True) # spectra needs to be 2D
+start_date = datetime.strptime(str(wind_estimate.time.values[0]), "%Y-%m-%dT%H:%M:%S.%f000")
+end_date = datetime.strptime(str(wind_estimate.time.values[-1]), "%Y-%m-%dT%H:%M:%S.%f000")
 
 ### Plot output
 fig, axs = plt.subplots(nrows=1,
                         ncols=1,
                         figsize=(14, 10))
 fig.suptitle(f'{spotter_id} wind estimates from IM: '
-             f'{pd.to_datetime(wind_estimate.time.values[0]).month}/{pd.to_datetime(wind_estimate.time.values[0]).day}/'
-             f'{pd.to_datetime(wind_estimate.time.values[0]).year} - '
-             f'{pd.to_datetime(wind_estimate.time.values[-1]).month}/{pd.to_datetime(wind_estimate.time.values[-1]).day}/'
-             f'{pd.to_datetime(wind_estimate.time.values[-1]).year}',
+             f'{start_date.month}/{start_date.day}/{start_date.year} - '
+             f'{end_date.month}/{end_date.day}{end_date.year}',
              fontsize=20)
 fig.tight_layout()
 axs.plot(wind_estimate['time'], wind_estimate['u10'], color='#020966')
